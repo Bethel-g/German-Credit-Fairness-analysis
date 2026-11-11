@@ -33,10 +33,10 @@ st.caption(
 )
 
 
-def run_analysis() -> None:
+def german_fairness() -> None:
     with st.spinner("Running the analysis. This may take a minute..."):
         result = subprocess.run(
-            [sys.executable, str(ROOT / "run_analysis.py")],
+            [sys.executable, str(ROOT / "german_fairness.py")],
             cwd=ROOT,
             capture_output=True,
             text=True,
@@ -60,18 +60,18 @@ missing_files = [path for path in EXPECTED_FILES if not path.is_file()]
 if missing_files:
     st.info("Run the analysis to create the results shown in this dashboard.")
     if st.button("Run analysis now", type="primary"):
-        run_analysis()
+        german_fairness()
     st.stop()
 
 if st.sidebar.button("Re-run analysis", type="primary"):
-    run_analysis()
+    german_fairness()
 
 metrics = pd.read_csv(OUTPUT / "metrics.csv").set_index("model")
 groups = pd.read_csv(OUTPUT / "group_metrics.csv")
 bootstrap = pd.read_csv(OUTPUT / "bootstrap_differences.csv")
 
-baseline = metrics.loc["Baseline"]
-mitigated = metrics.loc["AIF360 Reweighing"]
+baseline = metrics.loc["Logistic Regression (baseline)"]
+mitigated = metrics.loc["Logistic Regression (Reweighing)"]
 overview, groups_tab, eda_tab, report_tab = st.tabs(
     ["Overview", "Group comparisons", "Explore the data", "Full report"]
 )
@@ -109,7 +109,7 @@ with overview:
 
     st.image(
         str(FIGURES / "fairness_comparison.png"),
-        caption="Baseline compared with AIF360 Reweighing.",
+        caption="Logistic regression baseline compared with AIF360 Reweighing. The chart also shows random forest and gradient boosting comparisons.",
         use_container_width=True,
     )
     st.warning(
@@ -142,6 +142,7 @@ with eda_tab:
         ("eda_outcome_by_sex.png", "Observed favorable-label rate by sex"),
         ("eda_age_by_outcome.png", "Age distribution by credit class"),
         ("eda_credit_amount.png", "Credit amount distribution"),
+        ("eda_numeric_correlations.png", "Correlation matrix of numeric features"),
     ]
     for filename, caption in eda_figures:
         image_path = FIGURES / filename
@@ -169,7 +170,7 @@ with report_tab:
         report_text = report_path.read_text(encoding="utf-8")
         report_lines = [
             line for line in report_text.splitlines()
-            if not line.startswith("![")
+            if not line.startswith("![") and line.strip() != r"\newpage"
         ]
         st.markdown("\n".join(report_lines))
         st.download_button(
